@@ -68,6 +68,7 @@ bool OcclusionSpotInPrivateModule::modifyPathVelocity(
   utils::clipPathByLength(*path, clipped_path, max_range);
   PathWithLaneId interp_path;
   utils::splineInterpolate(clipped_path, 1.0, &interp_path, logger_);
+  debug_data_.interp_path = interp_path;
   int closest_idx = -1;
   if (!planning_utils::calcClosestIndex<PathWithLaneId>(
         interp_path, ego_pose, closest_idx, param_.dist_thr, param_.angle_thr)) {
@@ -103,6 +104,7 @@ bool OcclusionSpotInPrivateModule::modifyPathVelocity(
   utils::applySafeVelocityConsideringPossibleCollision(path, possible_collisions, param_);
   debug_data_.z = path->points.front().point.pose.position.z;
   debug_data_.possible_collisions = possible_collisions;
+  debug_data_.path_raw = *path;
   return true;
 }
 
