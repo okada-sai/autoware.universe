@@ -2,18 +2,15 @@ import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
 
-class Network(nn.Module):
-  def __init__(self, input_dim, output_dim):
-    super(Network, self).__init__()
+class AffineDynamicsModel(nn.Module):
+  def __init__(self, input_dim, output_dim, hidden_dim):
+    super(AffineDynamicsModel, self).__init__()
 
-    input_dim = input_dim
-    output_dim = output_dim
-
-    self.fc1 = nn.Linear(input_dim, 100)
-    self.fc2 = nn.Linear(100, 100)
-    self.fc3 = nn.Linear(100, 100)
-    self.fc4 = nn.Linear(100, 100)
-    self.fc5 = nn.Linear(100, output_dim)
+    self.fc1 = nn.Linear(input_dim, hidden_dim)
+    self.fc2 = nn.Linear(hidden_dim, hidden_dim)
+    self.fc3 = nn.Linear(hidden_dim, hidden_dim)
+    self.fc4 = nn.Linear(hidden_dim, hidden_dim)
+    self.fc5 = nn.Linear(hidden_dim, output_dim)
 
   def __call__(self, x):
     x = T.relu(self.fc1(x))
@@ -21,4 +18,21 @@ class Network(nn.Module):
     x = T.relu(self.fc3(x))
     x = T.relu(self.fc4(x))
     x = self.fc5(x)
+    return x
+
+class RecurrentDynamicsModel(nn.Module):
+  def __init__(self, input_dim, output_dim, hidden_dim, batch_first=True):
+    super(RecurrentDynamicsModel, self).__init__()
+
+    self.rnn = nn.LSTM(input_size=input_dim,
+                       hidden_size=hidden_dim,
+                       batch_first=batch_first)
+    self.fc = nn.Linear(hidden_dim, output_dim)
+
+    nn.init.xavier_normal_(self.rnn.weight_ih_l0)
+    nn.init.orthogonal_(self.rnn.weight_hh_l0)
+
+  def __call__(self, x):
+    h, _ = self.rnn(x)
+    x = self.fc(h[:, -1])
     return x

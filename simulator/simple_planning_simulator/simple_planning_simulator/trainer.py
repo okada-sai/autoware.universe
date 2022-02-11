@@ -17,7 +17,7 @@ class Trainer:
 
   def train(self, data, label, epoch, batch_size, test_size):
     # split to train/test data
-    train_data, test_data, train_label, test_label = train_test_split(data, label, test_size=test_size)
+    train_data, test_data, train_label, test_label = train_test_split(data, label, test_size=test_size, shuffle=False)
 
     # transform to tensor
     train_data = torch.tensor(train_data, dtype=torch.float)
@@ -93,7 +93,6 @@ class Trainer:
     torch.save(self.net.state_dict(), self.output_model_path)
 
     # plot train/loss test
-    plt.clf()
     fig = plt.figure()
 
     plt.plot(train_loss)
@@ -104,4 +103,4 @@ class Trainer:
     plot_file_name = self.root_path + 'log/train_test_plot.png'
     fig.savefig(plot_file_name)
 
-    plt.show()
+    # plt.show()

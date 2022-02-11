@@ -5,9 +5,12 @@ import matplotlib.pyplot as plt
 import torch
 
 from simple_planning_simulator.trainer import Trainer
-from network import Network
+from network import AffineDynamicsModel, RecurrentDynamicsModel
 
 # common functions
+def flatten(lst):
+  return [x for row in lst for x in row]
+
 def ros_time_to_sec(t):
   return t / 1000000000.0
 
@@ -45,20 +48,35 @@ def load_log(log_path, idx_vec):
 
   return values_vec
 
-def generate_lstm_data(rostime_vec, input_values_vec, output_values_vec):
-  pass
-
 def generate_data(rostime_vec, input_values_vec, output_values_vec):
   time_vec = []
   data_vec = []
   label_vec = []
-  for idx in range(len(rostime_vec)):
-    if idx == 0:
+  for t_idx in range(len(rostime_vec)):
+    if t_idx == 0:
       continue
 
-    rostime = rostime_vec[idx]
-    data = [input_value_vec[idx - 1] for input_value_vec in input_values_vec]
-    label = [output_value_vec[idx] for output_value_vec in output_values_vec]
+    rostime = rostime_vec[t_idx]
+    data = [input_value_vec[t_idx - 1] for input_value_vec in input_values_vec]
+    label = [output_value_vec[t_idx] for output_value_vec in output_values_vec]
+
+    time_vec.append(rostime)
+    data_vec.append(data)
+    label_vec.append(label)
+
+  return time_vec, data_vec, label_vec
+
+def generate_lstm_data(rostime_vec, input_values_vec, output_values_vec, sequence_length):
+  time_vec = []
+  data_vec = []
+  label_vec = []
+  for t_idx in range(len(rostime_vec)):
+    if t_idx + sequence_length == len(rostime_vec) - 1:
+      break
+
+    rostime = rostime_vec[t_idx]
+    data = [[input_value_vec[t_idx + diff_t_idx] for input_value_vec in input_values_vec] for diff_t_idx in range(sequence_length)]
+    label = [output_value_vec[t_idx + sequence_length] for output_value_vec in output_values_vec]
 
     time_vec.append(rostime)
     data_vec.append(data)
@@ -67,9 +85,12 @@ def generate_data(rostime_vec, input_values_vec, output_values_vec):
   return time_vec, data_vec, label_vec
 
 class LearningBasedSimulator:
-  def __init__(self, model_path='', use_lstm=False):
+  def __init__(self, model_path='', use_lstm=True):
     self.use_lstm = use_lstm
     self.root_path = os.path.dirname(os.path.abspath(__file__)) + '/../../'
+
+    # param for LSTM
+    self.sequence_length = 3
 
     # 100ms data
     # row index in log file
@@ -87,14 +108,15 @@ class LearningBasedSimulator:
     # self.omega_idx
 
     # define input and output
-    # input_idx_vec = [self.vel_idx, self.throttle_idx, self.brake_idx, self.steer_idx]
+    # self.input_idx_vec = [self.vel_idx, self.throttle_idx, self.brake_idx, self.steer_idx]
     self.input_idx_vec = [self.vel_idx, self.acc_idx, self.throttle_idx, self.brake_idx, self.steer_idx]
     self.output_idx_vec = [self.acc_idx]
 
     # define network
     input_dim = len(self.input_idx_vec)
     output_dim = len(self.output_idx_vec)
-    self.net = Network(input_dim, output_dim)
+    hidden_dim = 5 if use_lstm else 100
+    self.net = RecurrentDynamicsModel(input_dim, output_dim, hidden_dim) if use_lstm else AffineDynamicsModel(input_dim, output_dim, hidden_dim)
 
     if model_path != '':
       self.net.load_state_dict(torch.load(self.root_path + model_path))
@@ -114,10 +136,10 @@ class LearningBasedSimulator:
     output_values_vec = [values_vec[output_idx] for output_idx in self.output_idx_vec]
 
     # filter noise
-    values_vec = filter_noise(values_vec, self.acc_idx, 20)
+    values_vec = filter_noise(values_vec, self.acc_idx, 6)
 
     # generate data
-    rostime_vec, data, label = generate_lstm_data(rostime_vec, input_values_vec, output_values_vec) \
+    rostime_vec, data, label = generate_lstm_data(rostime_vec, input_values_vec, output_values_vec, self.sequence_length) \
         if self.use_lstm else generate_data(rostime_vec, input_values_vec, output_values_vec)
 
     # train
@@ -170,6 +192,9 @@ class LearningBasedSimulator:
     # load each value vectors
     values_vec = load_log(self.root_path + log_path, self.idx_vec)
 
+    # filter noise
+    values_vec = filter_noise(values_vec, self.acc_idx, 6)
+
     # extract time and input/output values
     rostime_vec = values_vec[self.rostime_idx]
     input_values_vec = [values_vec[input_idx] for input_idx in self.input_idx_vec]
@@ -178,26 +203,43 @@ class LearningBasedSimulator:
     relative_time_vec = [ros_time_to_sec(t - rostime_vec[0]) for t in rostime_vec]
 
     # generate data
-    rostime_vec, data_vec, _ = generate_lstm_data(rostime_vec, input_values_vec, output_values_vec) \
+    rostime_vec, data_vec, _ = generate_lstm_data(rostime_vec, input_values_vec, output_values_vec, self.sequence_length) \
         if self.use_lstm else generate_data(rostime_vec, input_values_vec, output_values_vec)
 
     # predict recursively
     output_log_path = self.root_path + 'log/predict.log'
     with open(output_log_path, 'w') as f:
-      current_vel = copy.deepcopy(data_vec[0][0])
-      current_acc = copy.deepcopy(data_vec[0][1])
+      if self.use_lstm:
+        current_vel = copy.deepcopy(data_vec[0][-1][0])
+        current_acc = copy.deepcopy(data_vec[0][-1][1])
+      else:
+        current_vel = copy.deepcopy(data_vec[0][0])
+        current_acc = copy.deepcopy(data_vec[0][1])
+
       for d_idx in range(len(data_vec)):
+
         if d_idx == len(data_vec) - 1:
           break
 
-        true_state = [data_vec[d_idx + 1][0], data_vec[d_idx + 1][1]]
+        if self.use_lstm:
+          true_state = [data_vec[d_idx + 1][-1][0], data_vec[d_idx + 1][-1][1]]
+        else:
+          true_state = [data_vec[d_idx + 1][0], data_vec[d_idx + 1][1]]
 
         if d_idx != 0:
-          data_vec[d_idx][0] = current_vel
-          data_vec[d_idx][1] = current_acc
+          if self.use_lstm:
+            for t in range(self.sequence_length - 1): # 0, 1 range(3 - 1)
+              target_time = self.sequence_length - 1 - t # 2, 1
+              data_vec[d_idx][target_time - 1][0] = data_vec[d_idx - 1][target_time][0] # 2 -> 1, 1 -> 0
+              data_vec[d_idx][target_time - 1][1] = data_vec[d_idx - 1][target_time][1]
+            data_vec[d_idx][-1][0] = current_vel
+            data_vec[d_idx][-1][1] = current_acc
+          else:
+            data_vec[d_idx][0] = current_vel
+            data_vec[d_idx][1] = current_acc
 
         diff_time = ros_time_to_sec(rostime_vec[d_idx + 1] - rostime_vec[d_idx])
-        current_acc = self.predict(data_vec[d_idx])[0].item()
+        current_acc = self.predict([data_vec[d_idx]])[0].item()
         current_vel += current_acc * diff_time
 
         current_state = [current_vel, current_acc]
