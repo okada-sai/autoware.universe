@@ -32,14 +32,19 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTABLE ${PROJECT_NAME}_exe
 )
 
+ament_python_install_package(${PROJECT_NAME})
+
+install(PROGRAMS
+  scripts/learning_based_simulator/train.py
+  scripts/learning_based_simulator/predict.py
+  scripts/learning_based_simulator/analysis_log.py
+  DESTINATION lib/${PROJECT_NAME}
+)
 
 ### Test
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
 endif()
-
-
-
 
 ament_auto_package(INSTALL_TO_SHARE param launch)
