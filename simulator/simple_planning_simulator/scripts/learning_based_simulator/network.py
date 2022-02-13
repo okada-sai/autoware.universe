@@ -1,3 +1,4 @@
+import torch
 import torch as T
 import torch.nn as nn
 import torch.nn.functional as F
@@ -34,5 +35,6 @@ class RecurrentDynamicsModel(nn.Module):
 
   def __call__(self, x):
     h, _ = self.rnn(x)
-    x = self.fc(h[:, -1])
+    x = h[:, -1, :]
+    x = self.fc(x)
     return x
