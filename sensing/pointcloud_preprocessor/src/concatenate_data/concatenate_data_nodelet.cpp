@@ -134,6 +134,12 @@ PointCloudConcatenateDataSynchronizerComponent::PointCloudConcatenateDataSynchro
       cloud_stdmap_.insert(std::make_pair(input_topics_[d], nullptr));
       cloud_stdmap_tmp_ = cloud_stdmap_;
 
+      // experimental: multithread
+      // mutex_map_.insert(std::make_pair(input_topics_[d], std::make_unique<std::mutex>()));
+      auto options = rclcpp::SubscriptionOptions();
+      options.callback_group =
+        this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+
       // CAN'T use auto type here.
       std::function<void(const sensor_msgs::msg::PointCloud2::SharedPtr msg)> cb = std::bind(
         &PointCloudConcatenateDataSynchronizerComponent::cloud_callback, this,
@@ -141,7 +147,7 @@ PointCloudConcatenateDataSynchronizerComponent::PointCloudConcatenateDataSynchro
 
       filters_[d].reset();
       filters_[d] = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-        input_topics_[d], rclcpp::SensorDataQoS().keep_last(maximum_queue_size_), cb);
+        input_topics_[d], rclcpp::SensorDataQoS().keep_last(maximum_queue_size_), cb, options);
     }
     auto twist_cb = std::bind(
       &PointCloudConcatenateDataSynchronizerComponent::twist_callback, this, std::placeholders::_1);
@@ -162,7 +168,8 @@ PointCloudConcatenateDataSynchronizerComponent::PointCloudConcatenateDataSynchro
   {
     updater_.setHardwareID("concatenate_data_checker");
     updater_.add(
-      "concat_status", this, &PointCloudConcatenateDataSynchronizerComponent::checkConcatStatus);
+      std::string(this->get_namespace()) + " : concat_status", this,
+      &PointCloudConcatenateDataSynchronizerComponent::checkConcatStatus);
   }
 }
 
@@ -260,6 +267,7 @@ void PointCloudConcatenateDataSynchronizerComponent::combineClouds(
 
 void PointCloudConcatenateDataSynchronizerComponent::publish()
 {
+  // auto start = std::chrono::system_clock::now(); //DEBUG 
   sensor_msgs::msg::PointCloud2::SharedPtr concat_cloud_ptr_ = nullptr;
   not_subscribed_topic_names_.clear();
 
@@ -274,7 +282,6 @@ void PointCloudConcatenateDataSynchronizerComponent::publish()
         PointCloudConcatenateDataSynchronizerComponent::combineClouds(
           concat_cloud_ptr_, transformed_cloud_ptr, concat_cloud_ptr_);
       }
-
     } else {
       not_subscribed_topic_names_.insert(e.first);
     }
@@ -293,6 +300,9 @@ void PointCloudConcatenateDataSynchronizerComponent::publish()
   std::for_each(std::begin(cloud_stdmap_tmp_), std::end(cloud_stdmap_tmp_), [](auto & e) {
     e.second = nullptr;
   });
+  // auto end = std::chrono::system_clock::now(); //DEBUG
+  // double elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count();
+  // RCLCPP_ERROR(get_logger(), "!!!! %4.f", elapsed);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +363,7 @@ void PointCloudConcatenateDataSynchronizerComponent::setPeriod(const int64_t new
 void PointCloudConcatenateDataSynchronizerComponent::cloud_callback(
   const sensor_msgs::msg::PointCloud2::SharedPtr & input_ptr, const std::string & topic_name)
 {
-  std::lock_guard<std::mutex> lock(mutex_);
+  // std::lock_guard<std::mutex> lock(*mutex_map_[topic_name]);
   if (input_ptr->data.empty()) {
     RCLCPP_WARN(get_logger(), "input pointcloud is empty.");
     return;
@@ -382,6 +392,7 @@ void PointCloudConcatenateDataSynchronizerComponent::cloud_callback(
   } else {
     cloud_stdmap_[topic_name] = xyzi_input_ptr;
 
+    std::unique_lock<std::mutex> lock(mutex_);
     const bool is_subscribed_all = std::all_of(
       std::begin(cloud_stdmap_), std::end(cloud_stdmap_),
       [](const auto & e) { return e.second != nullptr; });
