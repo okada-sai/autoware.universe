@@ -61,7 +61,7 @@ void buildSlices(
   const double min_length = offset;  // + p.baselink_to_front;
   // Note: min_detection_area_length is for occlusion spot visualization but not effective for
   // planning
-  const double min_detection_area_length = 10.0;
+  const double min_detection_area_length = 20.0;
   const double max_length = std::max(
     min_detection_area_length, std::min(p.detection_area_max_length, p.detection_area_length));
   const double min_distance = (is_on_right) ? -p.half_vehicle_width : p.half_vehicle_width;
