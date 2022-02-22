@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="csv_path_accel_map" default="$(find-pkg-share raw_vehicle_cmd_converter)/test/map_data/test_accel_map.csv" />
+  <arg name="csv_path_brake_map" default="$(find-pkg-share raw_vehicle_cmd_converter)/test/map_data/test_brake_map.csv" />
+  <arg name="csv_path_steer_map" default="$(find-pkg-share raw_vehicle_cmd_converter)/test/map_data/test_steer_map.csv" />
+
+  <node pkg="raw_vehicle_cmd_converter" exec="raw_vehicle_cmd_converter_node" name="raw_vehicle_cmd_converter" output="screen">
+    <arg name="log-level" value="debug"/>
+    <param name="csv_path_accel_map" value="$(var csv_path_accel_map)" />
+    <param name="csv_path_brake_map" value="$(var csv_path_brake_map)" />
+    <param name="csv_path_steer_map" value="$(var csv_path_steer_map)" />
+  </node>
+</launch>
