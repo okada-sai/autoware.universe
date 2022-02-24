@@ -31,6 +31,7 @@ from nav_msgs.msg import Odometry
 import rpyutils
 from autoware_auto_control_msgs.msg import AckermannControlCommand
 from autoware_auto_vehicle_msgs.msg import SteeringReport
+from tier4_vehicle_msgs.msg import ActuationCommandStamped
 
 logger = get_logger(__name__)
 
@@ -66,11 +67,21 @@ class TestRawVehicleCmdConverterLink(unittest.TestCase):
         # Shutdown the ROS context
         rclpy.shutdown()
 
+    def onActuationCmd(self, msg):
+        self.actuation_cmd = msg
+
     def setUp(self):
         # Create a ROS node for tests
         self.test_node = rclpy.create_node("test_node")
         self.event_name = "cpu_temperature"
         self.evaluation_time = 10.0
+        self.actuation_cmd = None
+        self.pub_control_cmd = self.test_node.create_publisher(AckermannControlCommand, "/input/control_cmd", 1)
+        self.pub_odometry = self.test_node.create_publisher(Odometry, "/input/odometry", 1)
+        self.pub_steer = self.test_node.create_publisher(SteeringReport, "/input/steering", 1)
+        self.test_node.create_subscription(
+            ActuationCommandStamped, "/output/actuation_cmd", self.onActuationCmd, 10
+        )
 
     def tearDown(self):
         self.test_node.destroy_node()
@@ -79,20 +90,6 @@ class TestRawVehicleCmdConverterLink(unittest.TestCase):
     def print_message(stat):
         logger.debug("===========================")
         logger.debug(stat)
-
-    @staticmethod
-    def get_num_valid_data(msg_buffer, level: bytes) -> int:
-        received_diagnostics = [stat for diag_array in msg_buffer for stat in diag_array.status]
-        filtered_diagnostics = [
-            stat
-            for stat in received_diagnostics
-            if ("Node starting up" not in stat.message) and (stat.level == level)
-        ]
-
-        for stat in filtered_diagnostics:
-            TestFaultInjectionLink.print_message(stat)
-
-        return len(filtered_diagnostics)
 
     def publish_steer_rpt(self, val):
         msg = SteeringReport()
@@ -116,52 +113,36 @@ class TestRawVehicleCmdConverterLink(unittest.TestCase):
         msg.longitudinal.jerk = jerk
         self.pub_control_cmd(msg)
 
+    def publish_data(self, ego_v, ego_steer, target_acc, target_steer_rate):
+        self.publish_steer_rpt(ego_steer)
+        self.publish_odometry(ego_v)
+        self.publish_control_cmd(0.0, target_steer_rate, 0.0, target_acc, 0.0)
+
+    def spinUntilReceiveOutput(self):
+        end_time = time.time() + self.evaluation_time
+        while time.time() < end_time:
+            rclpy.spin_once(self.test_node, timeout_sec=0.1)
+            if self.actuation_cmd is not None:
+                break
+
+    def checkOutput(self, expected_steer, expected_throttle, expected_brake):
+        self.assertAlmostEqual(self.actuation_cmd.actuation.steer_cmd, expected_steer)
+        self.assertAlmostEqual(self.actuation_cmd.actuation.accel_cmd, expected_throttle)
+        self.assertAlmostEqual(self.actuation_cmd.actuation.brake_cmd, expected_brake)
+
     def test_node_link(self):
         """
         Test node linkage.
 
-        Expect fault_injection_node publish /diagnostics.status
-        when the talker to publish strings
+        write me.
         """
-        self.pub_control_cmd = self.test_node.create_publisher(AckermannControlCommand, "/input/control_cmd", 1)
-        self.pub_odometry = self.test_node.create_publisher(Odometry, "/input/odometry", 1)
-        self.pub_steer = self.test_node.create_publisher(SteeringReport, "/input/steering", 1)
-
-        msg_buffer = []
-        self.test_node.create_subscription(
-            DiagnosticArray, "/output/actuation_cmd", lambda msg: msg_buffer.append(msg), 10
-        )
 
         # Wait until the talker transmits messages over the ROS topic
-        item = FaultInjectionEvent(name=self.event_name, level=FaultInjectionEvent.ERROR)
-        msg = SimulationEvents(fault_injection_events=[item])
-        pub_events.publish(msg)
-        end_time = time.time() + self.evaluation_time
-        while time.time() < end_time:
-            rclpy.spin_once(self.test_node, timeout_sec=0.1)
+        self.publish_data(0.0, 0.0, 1.0, 0.0)
+        self.spinUntilReceiveOutput()
+        self.checkOutput(0.0, 0.0, 0.0)
 
-        self.assertGreaterEqual(self.get_num_valid_data(msg_buffer, DiagnosticStatus.ERROR), 1)
 
-    def test_node_init_state(self):
-        """
-        Test init state.
-
-        Expect fault_injection_node does not publish /diagnostics.status
-        while the talker does not to publish
-        """
-        msg_buffer = []
-
-        self.test_node.create_subscription(
-            DiagnosticArray, "/diagnostics", lambda msg: msg_buffer.append(msg), 10
-        )
-
-        # Wait until the talker transmits two messages over the ROS topic
-        end_time = time.time() + self.evaluation_time
-        while time.time() < end_time:
-            rclpy.spin_once(self.test_node, timeout_sec=0.1)
-
-        # Return False if no valid data is received
-        self.assertEqual(self.get_num_valid_data(msg_buffer, DiagnosticStatus.ERROR), 0)
 
 
 @launch_testing.post_shutdown_test()

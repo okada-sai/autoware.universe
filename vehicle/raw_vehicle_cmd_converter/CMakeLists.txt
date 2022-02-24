@@ -45,6 +45,15 @@ if(BUILD_TESTING)
   set(TEST_RAW_VEHICLE_CMD_CONVERTER_EXE test_raw_vehicle_cmd_converter)
   ament_add_gtest(${TEST_RAW_VEHICLE_CMD_CONVERTER_EXE} ${TEST_SOURCES})
   target_link_libraries(${TEST_RAW_VEHICLE_CMD_CONVERTER_EXE} actuation_map_converter raw_vehicle_cmd_converter_node_component)
+
+  # launch_testing
+  find_package(launch_testing_ament_cmake REQUIRED)
+  add_launch_test(test/test_raw_vehicle_cmd_converter_node.py)
+  install(DIRECTORY
+    test/map_data
+    test/launch
+    DESTINATION share/${PROJECT_NAME}/
+  )
 endif()
 
 ament_auto_package(INSTALL_TO_SHARE
