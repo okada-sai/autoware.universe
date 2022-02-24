@@ -109,8 +109,6 @@ bool OcclusionSpotModule::modifyPathVelocity(
     for (const auto & p : detection_area_polygons) {
       debug_data_.detection_areas.emplace_back(p.polygon);
     }
-  } else {
-    debug_data_.occlusion_points.clear();
   }
   debug_data_.z = path->points.front().point.pose.position.z;
   debug_data_.possible_collisions = possible_collisions;

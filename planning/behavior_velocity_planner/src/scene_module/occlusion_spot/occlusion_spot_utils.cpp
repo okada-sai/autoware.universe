@@ -450,13 +450,15 @@ void createPossibleCollisionsInDetectionArea(
     grid_utils::findOcclusionSpots(
       occlusion_spot_positions, grid, detection_area_slice.polygon,
       param.detection_area.min_occlusion_spot_size);
-    Point p;
-    for (const auto & op : occlusion_spot_positions) {
-      p.x = op[0];
-      p.y = op[1];
-      debug_points.emplace_back(p);
-    }
     if (occlusion_spot_positions.empty()) continue;
+    if (param.debug) {
+      Point p;
+      for (const auto & op : occlusion_spot_positions) {
+        p.x = op[0];
+        p.y = op[1];
+        debug_points.emplace_back(p);
+      }
+    }
     // for each partition find nearest occlusion spot from polygon's origin
     BasicPoint2d base_point = detection_area_slice.polygon.at(0);
     const auto pc = generateOneNotableCollisionFromOcclusionSpot(
