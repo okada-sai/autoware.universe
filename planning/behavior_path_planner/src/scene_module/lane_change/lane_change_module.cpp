@@ -44,7 +44,7 @@ LaneChangeModule::LaneChangeModule(
 
 BehaviorModuleOutput LaneChangeModule::run()
 {
-  RCLCPP_DEBUG(getLogger(), "Was waiting approval, and now approved. Do plan().");
+  RCLCPP_INFO(getLogger(), "Was waiting approval, and now approved. Do plan().");
   approval_handler_.clearWaitApproval();
   current_state_ = BT::NodeStatus::RUNNING;
   return plan();
@@ -130,9 +130,11 @@ BT::NodeStatus LaneChangeModule::updateState()
 
 BehaviorModuleOutput LaneChangeModule::plan()
 {
+  RCLCPP_INFO_STREAM(getLogger(), "[plan()] Resample");
   constexpr double RESAMPLE_INTERVAL = 1.0;
   auto path = util::resamplePathWithSpline(status_.lane_change_path.path, RESAMPLE_INTERVAL);
   // Generate drivable area
+  RCLCPP_INFO_STREAM(getLogger(), "[plan()] Generate drivable area");
   {
     const auto & route_handler = planner_data_->route_handler;
     const auto common_parameters = planner_data_->parameters;
@@ -149,11 +151,13 @@ BehaviorModuleOutput LaneChangeModule::plan()
   }
 
   if (isAbortConditionSatisfied()) {
+    RCLCPP_INFO_STREAM(getLogger(), "[plan()] Abort condition satisfied");
     if (isNearEndOfLane() && isCurrentSpeedLow()) {
       const auto stop_point = util::insertStopPoint(0.1, &path);
     }
   }
 
+  RCLCPP_INFO_STREAM(getLogger(), "[plan()] Set output");
   BehaviorModuleOutput output;
   output.path = std::make_shared<PathWithLaneId>(path);
   const auto turn_signal_info = util::getPathTurnSignal(
@@ -163,6 +167,7 @@ BehaviorModuleOutput LaneChangeModule::plan()
     parameters_.lane_change_search_distance);
   output.turn_signal_info.turn_signal.command = turn_signal_info.first.command;
   output.turn_signal_info.signal_distance = turn_signal_info.second;
+  RCLCPP_INFO_STREAM(getLogger(), "[plan()] Finish");
   return output;
 }
 

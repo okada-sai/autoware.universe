@@ -62,6 +62,7 @@ BT::NodeStatus SceneModuleBTNodeInterface::tick()
     try {
       // NOTE: Since BehaviorTreeCpp has an issue to shadow the exception reason thrown
       // in the TreeNode, catch and display it here until the issue is fixed.
+      RCLCPP_INFO_STREAM(scene_module_->getLogger(), "Plan waiting approval...");
       scene_module_->updateData();
       auto res = setOutput<BehaviorModuleOutput>("output", scene_module_->planWaitingApproval());
       if (!res) {
@@ -80,6 +81,7 @@ BT::NodeStatus SceneModuleBTNodeInterface::tick()
     // NOTE: Since BehaviorTreeCpp has an issue to shadow the exception reason thrown
     // in the TreeNode, catch and display it here until the issue is fixed.
     try {
+      RCLCPP_INFO_STREAM(scene_module_->getLogger(), "Running module...");
       auto res = setOutput<BehaviorModuleOutput>("output", scene_module_->run());
       if (!res) {
         RCLCPP_ERROR_STREAM(scene_module_->getLogger(), "setOutput() failed : " << res.error());
@@ -96,8 +98,11 @@ BT::NodeStatus SceneModuleBTNodeInterface::tick()
       // std::exit(EXIT_FAILURE);  // TODO(Horibe) do appropriate handing
     }
 
-    RCLCPP_DEBUG_STREAM(
+    RCLCPP_INFO_STREAM(
       scene_module_->getLogger(), "on tick: current status = " << BT::toStr(current_status));
+    RCLCPP_INFO_STREAM(
+      scene_module_->getLogger(),
+      "on tick: waiting approval = " << module_status_->is_waiting_approval);
     if (current_status != BT::NodeStatus::RUNNING) {
       RCLCPP_DEBUG(scene_module_->getLogger(), "on tick: module ended.");
       break;
