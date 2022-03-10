@@ -39,6 +39,7 @@
 #include <pcl/point_types.h>
 #include <tf2/utils.h>
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -55,6 +56,8 @@ inline geometry_msgs::msg::Point getPoint(
 namespace behavior_velocity_planner
 {
 using Point2d = boost::geometry::model::d2::point_xy<double>;
+using autoware_auto_planning_msgs::msg::PathWithLaneId;
+using autoware_auto_planning_msgs::msg::PathPointWithLaneId;
 namespace planning_utils
 {
 inline geometry_msgs::msg::Point getPoint(const geometry_msgs::msg::Point & p) { return p; }
@@ -92,6 +95,11 @@ inline geometry_msgs::msg::Pose getPose(
 {
   return traj.points.at(idx).pose;
 }
+
+bool setVelocityFrom(const size_t idx, const double vel, PathWithLaneId * input);
+void insertVelocity(
+  PathWithLaneId & path, const PathPointWithLaneId & path_point,const double v, size_t &insert_index,
+  const double min_distance = 0.1);
 
 inline int64_t bitShift(int64_t original_id) { return original_id << (sizeof(int32_t) * 8 / 2); }
 
