@@ -48,7 +48,19 @@ bool WalkwayModule::modifyPathVelocity(
     planning_utils::initializeStopReason(tier4_planning_msgs::msg::StopReason::WALKWAY);
 
   const auto input = *path;
-
+  bool found_duplicated = false;
+  for (size_t i = 0; i < path->points.size() - 1; i++) {
+    const auto & p0 = path->points.at(i).point.pose.position;
+    const auto & p1 = path->points.at(i + 1).point.pose.position;
+    if (p0.x == p1.x && p0.y == p1.y) {
+      found_duplicated = true;
+    }
+  }
+  if (!found_duplicated) {
+    std::cout << "duplicated points not found before walkway" << std::endl;
+  } else {
+    std::cout << "duplicated points found before walkway" << std::endl;
+  }
   if (state_ == State::APPROACH) {
     // create polygon
     lanelet::CompoundPolygon3d lanelet_polygon = walkway_.polygon3d();
@@ -80,7 +92,13 @@ bool WalkwayModule::modifyPathVelocity(
     stop_factor.stop_pose = debug_data_.first_stop_pose;
     stop_factor.stop_factor_points.emplace_back(debug_data_.nearest_collision_point);
     planning_utils::appendStopReason(stop_factor, stop_reason);
-
+    for (size_t i = 0; i < path->points.size() - 1; i++) {
+      const auto & p0 = path->points.at(i).point.pose.position;
+      const auto & p1 = path->points.at(i + 1).point.pose.position;
+      if (p0.x == p1.x && p0.y == p1.y) {
+        std::cout << "duplicated points found after walkway" << std::endl;
+      }
+    }
     // use arc length to identify if ego vehicle is in front of walkway stop or not.
     const double signed_arc_dist_to_stop_point = tier4_autoware_utils::calcSignedArcLength(
       path->points, planner_data_->current_pose.pose.position,

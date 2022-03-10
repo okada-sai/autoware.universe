@@ -132,7 +132,13 @@ bool BlindSpotModule::modifyPathVelocity(
     lanelet_map_ptr, routing_graph_ptr, *path, objects_ptr, closest_idx, stop_line_pose);
   state_machine_.setStateWithMarginTime(
     has_obstacle ? State::STOP : State::GO, logger_.get_child("state_machine"), *clock_);
-
+  for (size_t i = 0; i < path->points.size() - 1; i++) {
+    const auto & p0 = path->points.at(i).point.pose.position;
+    const auto & p1 = path->points.at(i + 1).point.pose.position;
+    if (p0.x == p1.x && p0.y == p1.y) {
+      std::cout << "duplicated at blindspot" << std::endl;
+    }
+  }
   /* set stop speed */
   if (state_machine_.getState() == State::STOP) {
     constexpr double stop_vel = 0.0;
@@ -191,7 +197,6 @@ bool BlindSpotModule::generateStopLine(
   const double delay_response_time = planner_data_->delay_response_time;
   const double pass_judge_line_dist =
     planning_utils::calcJudgeLineDistWithAccLimit(current_vel, max_acc, delay_response_time);
-
   /* set parameters */
   constexpr double interval = 0.2;
   const int margin_idx_dist = std::ceil(planner_param_.stop_line_margin / interval);
@@ -229,26 +234,38 @@ bool BlindSpotModule::generateStopLine(
     stop_idx_ip = std::max(stop_idx_ip - base2front_idx_dist, 0);
   }
 
-  /* insert stop_point */
-  *stop_line_idx = insertPoint(stop_idx_ip, path_ip, path);
+  /* insert stop_point index */
+  if (!util::hasDuplicatedPoint(
+        *path, path_ip.points.at(stop_idx_ip).point.pose.position, stop_line_idx)) {
+    *stop_line_idx = insertPoint(stop_idx_ip, path_ip, path);
+  } else {
+    std::cout << "duplicated stop line at blindspot" << std::endl;
+  }
 
   /* if another stop point exist before intersection stop_line, disable judge_line. */
   bool has_prior_stopline = false;
-  for (int i = 0; i < *stop_line_idx; ++i) {
+  for (int i = 0; i <= *stop_line_idx; ++i) {
     if (std::fabs(path->points.at(i).point.longitudinal_velocity_mps) < 0.1) {
       has_prior_stopline = true;
+      std::cout << "has already stop line at blindspot" << std::endl;
       break;
     }
   }
 
   /* insert judge point */
-  const int pass_judge_idx_ip = std::min(
+  int pass_judge_idx_ip = std::min(
     static_cast<int>(path_ip.points.size()) - 1, std::max(stop_idx_ip - pass_judge_idx_dist, 0));
   if (has_prior_stopline || stop_idx_ip == pass_judge_idx_ip) {
     *pass_judge_line_idx = *stop_line_idx;
   } else {
-    *pass_judge_line_idx = insertPoint(pass_judge_idx_ip, path_ip, path);
-    ++(*stop_line_idx);  // stop index is incremented by judge line insertion
+    //! check if there is no duplicated point
+    if (!util::hasDuplicatedPoint(
+          *path, path_ip.points.at(pass_judge_idx_ip).point.pose.position, pass_judge_line_idx)) {
+      *pass_judge_line_idx = insertPoint(pass_judge_idx_ip, path_ip, path);
+      ++(*stop_line_idx);  // stop index is incremented by judge line insertion
+    } else {
+      std::cout << "duplicated pass judge at blindspot" << std::endl;
+    }
   }
 
   RCLCPP_DEBUG(

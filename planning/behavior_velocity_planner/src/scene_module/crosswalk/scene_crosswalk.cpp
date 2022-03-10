@@ -49,7 +49,19 @@ bool CrosswalkModule::modifyPathVelocity(
     planning_utils::initializeStopReason(tier4_planning_msgs::msg::StopReason::CROSSWALK);
 
   const auto input = *path;
-
+  bool found_duplicated = false;
+  for (size_t i = 0; i < path->points.size() - 1; i++) {
+    const auto & p0 = path->points.at(i).point.pose.position;
+    const auto & p1 = path->points.at(i + 1).point.pose.position;
+    if (p0.x == p1.x && p0.y == p1.y) {
+      found_duplicated = true;
+    }
+  }
+  if (!found_duplicated) {
+    std::cout << "duplicated points not found before crosswalk" << std::endl;
+  } else {
+    std::cout << "duplicated points found before crosswalk" << std::endl;
+  }
   // create polygon
   lanelet::CompoundPolygon3d lanelet_polygon = crosswalk_.polygon3d();
   Polygon polygon;
@@ -93,6 +105,14 @@ bool CrosswalkModule::modifyPathVelocity(
       planning_utils::appendStopReason(stop_factor, stop_reason);
     }
   }
+  for (size_t i = 0; i < path->points.size() - 1; i++) {
+    const auto & p0 = path->points.at(i).point.pose.position;
+    const auto & p1 = path->points.at(i + 1).point.pose.position;
+    if (p0.x == p1.x && p0.y == p1.y) {
+      std::cout << "duplicated points found after crosswalk" << std::endl;
+    }
+  }
+
   return true;
 }
 
@@ -217,6 +237,7 @@ bool CrosswalkModule::checkStopArea(
       *insert_stop = stop;
     }
   }
+
   return true;
 }
 
