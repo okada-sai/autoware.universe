@@ -229,12 +229,14 @@ bool BlindSpotModule::generateStopLine(
     stop_idx_ip = std::max(stop_idx_ip - base2front_idx_dist, 0);
   }
 
-  /* insert stop_point */
-  *stop_line_idx = insertPoint(stop_idx_ip, path_ip, path);
-
+  /* insert stop_point index */
+  if (!util::hasDuplicatedPoint(
+        *path, path_ip.points.at(stop_idx_ip).point.pose.position, stop_line_idx)) {
+    *stop_line_idx = insertPoint(stop_idx_ip, path_ip, path);
+  }
   /* if another stop point exist before intersection stop_line, disable judge_line. */
   bool has_prior_stopline = false;
-  for (int i = 0; i < *stop_line_idx; ++i) {
+  for (int i = 0; i <= *stop_line_idx; ++i) {
     if (std::fabs(path->points.at(i).point.longitudinal_velocity_mps) < 0.1) {
       has_prior_stopline = true;
       break;
@@ -242,13 +244,17 @@ bool BlindSpotModule::generateStopLine(
   }
 
   /* insert judge point */
-  const int pass_judge_idx_ip = std::min(
+  int pass_judge_idx_ip = std::min(
     static_cast<int>(path_ip.points.size()) - 1, std::max(stop_idx_ip - pass_judge_idx_dist, 0));
   if (has_prior_stopline || stop_idx_ip == pass_judge_idx_ip) {
     *pass_judge_line_idx = *stop_line_idx;
   } else {
-    *pass_judge_line_idx = insertPoint(pass_judge_idx_ip, path_ip, path);
-    ++(*stop_line_idx);  // stop index is incremented by judge line insertion
+    //! check if there is no duplicated point
+    if (!util::hasDuplicatedPoint(
+          *path, path_ip.points.at(pass_judge_idx_ip).point.pose.position, pass_judge_line_idx)) {
+      *pass_judge_line_idx = insertPoint(pass_judge_idx_ip, path_ip, path);
+      ++(*stop_line_idx);  // stop index is incremented by judge line insertion
+    }
   }
 
   RCLCPP_DEBUG(

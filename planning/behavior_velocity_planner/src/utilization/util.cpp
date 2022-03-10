@@ -23,6 +23,39 @@ namespace behavior_velocity_planner
 {
 namespace planning_utils
 {
+bool setVelocityFrom(const size_t idx, const double vel, PathWithLaneId * input)
+{
+  for (size_t i = idx; i < input->points.size(); ++i) {
+    input->points.at(i).point.longitudinal_velocity_mps =
+      std::min(static_cast<float>(vel), input->points.at(i).point.longitudinal_velocity_mps);
+  }
+  return true;
+}
+
+void insertVelocity(
+  PathWithLaneId & path, const PathPointWithLaneId & path_point, const double v,
+  size_t & insert_index, const double min_distance)
+{
+  bool already_has_path_point = false;
+  // consider front/back point is near to insert point
+  for (int i = 0; i <= 1; i++) {
+    if (static_cast<int>(insert_index + i) == static_cast<int>(path.points.size())) {
+      continue;
+    }
+    if (
+      tier4_autoware_utils::calcDistance2d(path.points.at(insert_index + i), path_point) <
+      min_distance) {
+      path.points.at(insert_index).point.longitudinal_velocity_mps = 0;
+      already_has_path_point = true;
+    }
+  }
+  if (!already_has_path_point) {
+    path.points.insert(path.points.begin() + insert_index, v, path_point);
+    insert_index++;
+  }
+  setVelocityFrom(insert_index, v, &path);
+}
+
 Polygon2d toFootprintPolygon(const autoware_auto_perception_msgs::msg::PredictedObject & object)
 {
   Polygon2d obj_footprint;
