@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 project(multi_object_tracker)
 
-set(CMAKE_BUILD_TYPE "Debug")
+# set(CMAKE_BUILD_TYPE "Debug")
 
 ### Compile options
 if(NOT CMAKE_CXX_STANDARD)
