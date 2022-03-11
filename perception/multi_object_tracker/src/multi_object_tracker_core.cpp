@@ -87,11 +87,11 @@ bool transformDetectedObjects(
   return true;
 }
 
-inline float getVelocity(const autoware_auto_perception_msgs::msg::TrackedObject & object)
+inline double getVelocity(const autoware_auto_perception_msgs::msg::TrackedObject & object)
 {
-  return std::hypot(
+  return static_cast<double>(std::hypot(
     object.kinematics.twist_with_covariance.twist.linear.x,
-    object.kinematics.twist_with_covariance.twist.linear.y);
+    object.kinematics.twist_with_covariance.twist.linear.y));
 }
 
 inline geometry_msgs::msg::Pose getPose(
@@ -100,13 +100,13 @@ inline geometry_msgs::msg::Pose getPose(
   return object.kinematics.pose_with_covariance.pose;
 }
 
-float getXYSquareDistance(
+double getXYSquareDistance(
   const geometry_msgs::msg::Transform & self_transform,
   const autoware_auto_perception_msgs::msg::TrackedObject & object)
 {
   const auto object_pos = getPose(object).position;
-  const float x = self_transform.translation.x - object_pos.x;
-  const float y = self_transform.translation.y - object_pos.y;
+  const double x = self_transform.translation.x - object_pos.x;
+  const double y = self_transform.translation.y - object_pos.y;
   return x * x + y * y;
 }
 
@@ -125,17 +125,17 @@ bool isSpecificAlivePattern(
   autoware_auto_perception_msgs::msg::TrackedObject object;
   tracker->getTrackedObject(time, object);
 
-  constexpr float min_detection_rate = 0.2;
+  constexpr double min_detection_rate = 0.2f;
   constexpr int min_measurement_count = 5;
-  constexpr float max_elapsed_time = 10.0;
-  constexpr float max_velocity = 1.0;
-  constexpr float max_distance = 100.0;
+  constexpr double max_elapsed_time = 10.0f;
+  constexpr double max_velocity = 1.0f;
+  constexpr double max_distance = 100.0f;
 
   const std::uint8_t label = tracker->getHighestProbLabel();
 
-  const float detection_rate =
-    tracker->getTotalMeasurementCount() /
-    (tracker->getTotalNoMeasurementCount() + tracker->getTotalMeasurementCount());
+  const double detection_rate =
+    static_cast<double>(tracker->getTotalMeasurementCount() /
+    (tracker->getTotalNoMeasurementCount() + tracker->getTotalMeasurementCount()));
 
   const bool big_vehicle = (label == Label::TRUCK || label == Label::BUS);
 
@@ -252,7 +252,7 @@ void MultiObjectTracker::onMeasurement(
 
   /* new tracker */
   for (size_t i = 0; i < transformed_objects.objects.size(); ++i) {
-    if (reverse_assignment.find(i) != reverse_assignment.end()) {  // found
+    if (reverse_assignment.find(static_cast<int>(i)) != reverse_assignment.end()) {  // found
       continue;
     }
     list_tracker_.push_back(createNewTracker(transformed_objects.objects.at(i), measurement_time));
@@ -301,7 +301,7 @@ void MultiObjectTracker::checkTrackerLifeCycle(
   const geometry_msgs::msg::Transform & self_transform)
 {
   /* params */
-  constexpr float max_elapsed_time = 1.0;
+  constexpr double max_elapsed_time = 1.0;
 
   /* delete tracker */
   for (auto itr = list_tracker.begin(); itr != list_tracker.end(); ++itr) {
@@ -318,7 +318,7 @@ void MultiObjectTracker::checkTrackerLifeCycle(
 void MultiObjectTracker::sanitizeTracker(
   std::list<std::shared_ptr<Tracker>> & list_tracker, const rclcpp::Time & time)
 {
-  constexpr float min_iou = 0.1;
+  constexpr double min_iou = 0.1f;
   constexpr double distance_threshold = 5.0;
   /* delete collision tracker */
   for (auto itr1 = list_tracker.begin(); itr1 != list_tracker.end(); ++itr1) {

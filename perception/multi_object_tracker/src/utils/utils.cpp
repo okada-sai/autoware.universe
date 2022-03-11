@@ -102,7 +102,7 @@ double get2dIoU(
 tier4_autoware_utils::Polygon2d inverseClockWise(const tier4_autoware_utils::Polygon2d & polygon)
 {
   tier4_autoware_utils::Polygon2d inverted_polygon;
-  for (int i = polygon.outer().size() - 1; 0 <= i; --i) {
+  for (int i = static_cast<int>(polygon.outer().size()) - 1; 0 <= i; --i) {
     inverted_polygon.outer().push_back(polygon.outer().at(i));
   }
   return inverted_polygon;
@@ -110,7 +110,7 @@ tier4_autoware_utils::Polygon2d inverseClockWise(const tier4_autoware_utils::Pol
 
 bool isClockWise(const tier4_autoware_utils::Polygon2d & polygon)
 {
-  const int n = polygon.outer().size();
+  const int n = static_cast<int>(polygon.outer().size());
   const double x_offset = polygon.outer().at(0).x();
   const double y_offset = polygon.outer().at(0).y();
   double sum = 0.0;
@@ -189,7 +189,7 @@ std::uint8_t getHighestProbLabel(
   const std::vector<autoware_auto_perception_msgs::msg::ObjectClassification> & classification)
 {
   std::uint8_t label = autoware_auto_perception_msgs::msg::ObjectClassification::UNKNOWN;
-  float highest_prob = 0.0;
+  double highest_prob = 0.0;
   for (const auto & _class : classification) {
     if (highest_prob < _class.probability) {
       highest_prob = _class.probability;

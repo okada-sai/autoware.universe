@@ -19,7 +19,7 @@ endif()
 add_compile_options(-Wall -Wextra -Wpedantic -Werror)
 add_compile_options(-Wmaybe-uninitialized)
 add_compile_options(-Wshadow)
-# add_compile_options(-Wconversion)
+add_compile_options(-Wconversion)
 # add_compile_options(-ftrapv)
 # add_compile_options(-fsanitize=address,undefined)
 # add_compile_options(-fno-omit-frame-pointer

@@ -36,16 +36,16 @@ UnknownTracker::UnknownTracker(
 
   // initialize params
   ekf_params_.use_measurement_covariance = false;
-  float q_stddev_x = 0.0;                                    // [m/s]
-  float q_stddev_y = 0.0;                                    // [m/s]
-  float q_stddev_vx = tier4_autoware_utils::kmph2mps(0.1);   // [m/(s*s)]
-  float q_stddev_vy = tier4_autoware_utils::kmph2mps(0.1);   // [m/(s*s)]
-  float r_stddev_x = 0.4;                                    // [m]
-  float r_stddev_y = 0.4;                                    // [m]
-  float p0_stddev_x = 1.0;                                   // [m/s]
-  float p0_stddev_y = 1.0;                                   // [m/s]
-  float p0_stddev_vx = tier4_autoware_utils::kmph2mps(0.1);  // [m/(s*s)]
-  float p0_stddev_vy = tier4_autoware_utils::kmph2mps(0.1);  // [m/(s*s)]
+  double q_stddev_x = 0.0;                                    // [m/s]
+  double q_stddev_y = 0.0;                                    // [m/s]
+  double q_stddev_vx = tier4_autoware_utils::kmph2mps(0.1);   // [m/(s*s)]
+  double q_stddev_vy = tier4_autoware_utils::kmph2mps(0.1);   // [m/(s*s)]
+  double r_stddev_x = 0.4;                                    // [m]
+  double r_stddev_y = 0.4;                                    // [m]
+  double p0_stddev_x = 1.0;                                   // [m/s]
+  double p0_stddev_y = 1.0;                                   // [m/s]
+  double p0_stddev_vx = tier4_autoware_utils::kmph2mps(0.1);  // [m/(s*s)]
+  double p0_stddev_vy = tier4_autoware_utils::kmph2mps(0.1);  // [m/(s*s)]
   ekf_params_.q_cov_x = std::pow(q_stddev_x, 2.0);
   ekf_params_.q_cov_y = std::pow(q_stddev_y, 2.0);
   ekf_params_.q_cov_vx = std::pow(q_stddev_vx, 2.0);
@@ -220,7 +220,7 @@ bool UnknownTracker::measureWithPose(
   }
 
   // position z
-  constexpr float gain = 0.9;
+  constexpr double gain = 0.9;
   z_ = gain * z_ + (1.0 - gain) * object.kinematics.pose_with_covariance.pose.position.z;
 
   return true;

@@ -43,19 +43,19 @@ PedestrianTracker::PedestrianTracker(
 
   // initialize params
   ekf_params_.use_measurement_covariance = false;
-  float q_stddev_x = 0.0;                                     // [m/s]
-  float q_stddev_y = 0.0;                                     // [m/s]
-  float q_stddev_yaw = tier4_autoware_utils::deg2rad(20);     // [rad/s]
-  float q_stddev_vx = tier4_autoware_utils::kmph2mps(5);      // [m/(s*s)]
-  float q_stddev_wz = tier4_autoware_utils::deg2rad(20);      // [rad/(s*s)]
-  float r_stddev_x = 0.4;                                     // [m]
-  float r_stddev_y = 0.4;                                     // [m]
-  float r_stddev_yaw = tier4_autoware_utils::deg2rad(30);     // [rad]
-  float p0_stddev_x = 1.0;                                    // [m/s]
-  float p0_stddev_y = 1.0;                                    // [m/s]
-  float p0_stddev_yaw = tier4_autoware_utils::deg2rad(1000);  // [rad/s]
-  float p0_stddev_vx = tier4_autoware_utils::kmph2mps(5);     // [m/(s*s)]
-  float p0_stddev_wz = tier4_autoware_utils::deg2rad(10);     // [rad/(s*s)]
+  double q_stddev_x = 0.0;                                     // [m/s]
+  double q_stddev_y = 0.0;                                     // [m/s]
+  double q_stddev_yaw = tier4_autoware_utils::deg2rad(20);     // [rad/s]
+  double q_stddev_vx = tier4_autoware_utils::kmph2mps(5);      // [m/(s*s)]
+  double q_stddev_wz = tier4_autoware_utils::deg2rad(20);      // [rad/(s*s)]
+  double r_stddev_x = 0.4;                                     // [m]
+  double r_stddev_y = 0.4;                                     // [m]
+  double r_stddev_yaw = tier4_autoware_utils::deg2rad(30);     // [rad]
+  double p0_stddev_x = 1.0;                                    // [m/s]
+  double p0_stddev_y = 1.0;                                    // [m/s]
+  double p0_stddev_yaw = tier4_autoware_utils::deg2rad(1000);  // [rad/s]
+  double p0_stddev_vx = tier4_autoware_utils::kmph2mps(5);     // [m/(s*s)]
+  double p0_stddev_wz = tier4_autoware_utils::deg2rad(10);     // [rad/(s*s)]
   ekf_params_.q_cov_x = std::pow(q_stddev_x, 2.0);
   ekf_params_.q_cov_y = std::pow(q_stddev_y, 2.0);
   ekf_params_.q_cov_yaw = std::pow(q_stddev_yaw, 2.0);
@@ -228,7 +228,7 @@ bool PedestrianTracker::measureWithPose(
   //   while (M_PI_2 <= measurement_yaw - X_t(IDX::YAW)) {
   //     measurement_yaw = measurement_yaw - M_PI;
   //   }
-  //   float theta = std::acos(
+  //   double theta = std::acos(
   //     std::cos(X_t(IDX::YAW)) * std::cos(measurement_yaw) +
   //     std::sin(X_t(IDX::YAW)) * std::sin(measurement_yaw));
   //   if (tier4_autoware_utils::deg2rad(60) < std::fabs(theta)) return false;
@@ -288,7 +288,7 @@ bool PedestrianTracker::measureWithPose(
   }
 
   // position z
-  constexpr float gain = 0.9;
+  constexpr double gain = 0.9;
   z_ = gain * z_ + (1.0 - gain) * object.kinematics.pose_with_covariance.pose.position.z;
 
   return true;
@@ -297,7 +297,7 @@ bool PedestrianTracker::measureWithPose(
 bool PedestrianTracker::measureWithShape(
   const autoware_auto_perception_msgs::msg::DetectedObject & object)
 {
-  constexpr float gain = 0.9;
+  constexpr double gain = 0.9;
   if (object.shape.type == autoware_auto_perception_msgs::msg::Shape::BOUNDING_BOX) {
     bounding_box_.width = gain * bounding_box_.width + (1.0 - gain) * object.shape.dimensions.x;
     bounding_box_.length = gain * bounding_box_.length + (1.0 - gain) * object.shape.dimensions.y;

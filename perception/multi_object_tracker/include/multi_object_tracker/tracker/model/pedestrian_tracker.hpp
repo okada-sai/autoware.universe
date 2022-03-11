@@ -42,26 +42,26 @@ private:
   struct EkfParams
   {
     char dim_x = 5;
-    float q_cov_x;
-    float q_cov_y;
-    float q_cov_yaw;
-    float q_cov_wz;
-    float q_cov_vx;
-    float p0_cov_vx;
-    float p0_cov_wz;
+    double q_cov_x;
+    double q_cov_y;
+    double q_cov_yaw;
+    double q_cov_wz;
+    double q_cov_vx;
+    double p0_cov_vx;
+    double p0_cov_wz;
     // if use_measurement_covariance_ is false, use following params
     bool use_measurement_covariance;
-    float r_cov_x;
-    float r_cov_y;
-    float r_cov_yaw;
-    float p0_cov_x;
-    float p0_cov_y;
-    float p0_cov_yaw;
+    double r_cov_x;
+    double r_cov_y;
+    double r_cov_yaw;
+    double p0_cov_x;
+    double p0_cov_y;
+    double p0_cov_yaw;
   } ekf_params_;
 
   double max_vx_;
   double max_wz_;
-  float z_;
+  double z_;
 
 private:
   struct BoundingBox

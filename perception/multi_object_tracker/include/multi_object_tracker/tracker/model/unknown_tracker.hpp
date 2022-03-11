@@ -41,21 +41,21 @@ private:
   struct EkfParams
   {
     char dim_x = 4;
-    float q_cov_x;
-    float q_cov_y;
-    float q_cov_vx;
-    float q_cov_vy;
-    float p0_cov_vx;
-    float p0_cov_vy;
+    double q_cov_x;
+    double q_cov_y;
+    double q_cov_vx;
+    double q_cov_vy;
+    double p0_cov_vx;
+    double p0_cov_vy;
     // if use_measurement_covariance_ is false, use following params
     bool use_measurement_covariance;
-    float r_cov_x;
-    float r_cov_y;
-    float p0_cov_x;
-    float p0_cov_y;
+    double r_cov_x;
+    double r_cov_y;
+    double p0_cov_x;
+    double p0_cov_y;
   } ekf_params_;
-  float max_vx_, max_vy_;
-  float z_;
+  double max_vx_, max_vy_;
+  double z_;
 
 public:
   UnknownTracker(

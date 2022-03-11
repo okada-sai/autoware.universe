@@ -41,19 +41,19 @@ NormalVehicleTracker::NormalVehicleTracker(
 
   // initialize params
   ekf_params_.use_measurement_covariance = false;
-  float q_stddev_x = 0.0;                                     // object coordinate [m/s]
-  float q_stddev_y = 0.0;                                     // object coordinate [m/s]
-  float q_stddev_yaw = tier4_autoware_utils::deg2rad(20);     // map coordinate[rad/s]
-  float q_stddev_vx = tier4_autoware_utils::kmph2mps(10);     // object coordinate [m/(s*s)]
-  float q_stddev_wz = tier4_autoware_utils::deg2rad(20);      // object coordinate [rad/(s*s)]
-  float r_stddev_x = 1.0;                                     // object coordinate [m]
-  float r_stddev_y = 0.3;                                     // object coordinate [m]
-  float r_stddev_yaw = tier4_autoware_utils::deg2rad(30);     // map coordinate [rad]
-  float p0_stddev_x = 1.0;                                    // object coordinate [m/s]
-  float p0_stddev_y = 0.3;                                    // object coordinate [m/s]
-  float p0_stddev_yaw = tier4_autoware_utils::deg2rad(30);    // map coordinate [rad]
-  float p0_stddev_vx = tier4_autoware_utils::kmph2mps(1000);  // object coordinate [m/s]
-  float p0_stddev_wz = tier4_autoware_utils::deg2rad(10);     // object coordinate [rad/s]
+  double q_stddev_x = 0.0;                                     // object coordinate [m/s]
+  double q_stddev_y = 0.0;                                     // object coordinate [m/s]
+  double q_stddev_yaw = tier4_autoware_utils::deg2rad(20);     // map coordinate[rad/s]
+  double q_stddev_vx = tier4_autoware_utils::kmph2mps(10);     // object coordinate [m/(s*s)]
+  double q_stddev_wz = tier4_autoware_utils::deg2rad(20);      // object coordinate [rad/(s*s)]
+  double r_stddev_x = 1.0;                                     // object coordinate [m]
+  double r_stddev_y = 0.3;                                     // object coordinate [m]
+  double r_stddev_yaw = tier4_autoware_utils::deg2rad(30);     // map coordinate [rad]
+  double p0_stddev_x = 1.0;                                    // object coordinate [m/s]
+  double p0_stddev_y = 0.3;                                    // object coordinate [m/s]
+  double p0_stddev_yaw = tier4_autoware_utils::deg2rad(30);    // map coordinate [rad]
+  double p0_stddev_vx = tier4_autoware_utils::kmph2mps(1000);  // object coordinate [m/s]
+  double p0_stddev_wz = tier4_autoware_utils::deg2rad(10);     // object coordinate [rad/s]
   ekf_params_.q_cov_x = std::pow(q_stddev_x, 2.0);
   ekf_params_.q_cov_y = std::pow(q_stddev_y, 2.0);
   ekf_params_.q_cov_yaw = std::pow(q_stddev_yaw, 2.0);
@@ -213,16 +213,16 @@ bool NormalVehicleTracker::measureWithPose(
 {
   using Label = autoware_auto_perception_msgs::msg::ObjectClassification;
 
-  float r_cov_x;
-  float r_cov_y;
+  double r_cov_x;
+  double r_cov_y;
   const uint8_t label = utils::getHighestProbLabel(object.classification);
 
   if (label == Label::CAR) {
     r_cov_x = ekf_params_.r_cov_x;
     r_cov_y = ekf_params_.r_cov_y;
   } else if (label == Label::TRUCK || label == Label::BUS) {
-    constexpr float r_stddev_x = 8.0;  // [m]
-    constexpr float r_stddev_y = 0.8;  // [m]
+    constexpr double r_stddev_x = 8.0;  // [m]
+    constexpr double r_stddev_y = 0.8;  // [m]
     r_cov_x = std::pow(r_stddev_x, 2.0);
     r_cov_y = std::pow(r_stddev_y, 2.0);
   } else {
@@ -303,7 +303,7 @@ bool NormalVehicleTracker::measureWithPose(
   }
 
   // position z
-  constexpr float gain = 0.9;
+  constexpr double gain = 0.9;
   z_ = gain * z_ + (1.0 - gain) * object.kinematics.pose_with_covariance.pose.position.z;
 
   return true;
@@ -315,7 +315,7 @@ bool NormalVehicleTracker::measureWithShape(
   if (object.shape.type != autoware_auto_perception_msgs::msg::Shape::BOUNDING_BOX) {
     return false;
   }
-  constexpr float gain = 0.9;
+  constexpr double gain = 0.9;
 
   bounding_box_.width = gain * bounding_box_.width + (1.0 - gain) * object.shape.dimensions.x;
   bounding_box_.length = gain * bounding_box_.length + (1.0 - gain) * object.shape.dimensions.y;
