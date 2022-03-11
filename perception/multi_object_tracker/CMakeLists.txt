@@ -16,6 +16,17 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wno-nonportable-include-path)
 endif()
 
+add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+add_compile_options(-Wmaybe-uninitialized)
+add_compile_options(-Wshadow)
+# add_compile_options(-Wconversion)
+# add_compile_options(-ftrapv)
+# add_compile_options(-fsanitize=address,undefined)
+# add_compile_options(-fno-omit-frame-pointer
+# add_compile_options(-fno-sanitize-recover)
+# add_compile_options(-Wfloat-equal)
+
+
 ### Find Packages
 find_package(ament_cmake_auto REQUIRED)
 

@@ -60,15 +60,15 @@ UnknownTracker::UnknownTracker(
   max_vy_ = tier4_autoware_utils::kmph2mps(5);  // [m/s]
 
   // initialize X matrix
-  Eigen::MatrixXd X(ekf_params_.dim_x, 1);
-  X(IDX::X) = object.kinematics.pose_with_covariance.pose.position.x;
-  X(IDX::Y) = object.kinematics.pose_with_covariance.pose.position.y;
+  Eigen::MatrixXd X_mat(ekf_params_.dim_x, 1);
+  X_mat(IDX::X) = object.kinematics.pose_with_covariance.pose.position.x;
+  X_mat(IDX::Y) = object.kinematics.pose_with_covariance.pose.position.y;
   if (object.kinematics.has_twist) {
-    X(IDX::VX) = object.kinematics.twist_with_covariance.twist.linear.x;
-    X(IDX::VY) = object.kinematics.twist_with_covariance.twist.linear.y;
+    X_mat(IDX::VX) = object.kinematics.twist_with_covariance.twist.linear.x;
+    X_mat(IDX::VY) = object.kinematics.twist_with_covariance.twist.linear.y;
   } else {
-    X(IDX::VX) = 0.0;
-    X(IDX::VY) = 0.0;
+    X_mat(IDX::VX) = 0.0;
+    X_mat(IDX::VY) = 0.0;
   }
 
   // initialize P matrix
@@ -101,7 +101,7 @@ UnknownTracker::UnknownTracker(
     }
   }
 
-  ekf_.init(X, P);
+  ekf_.init(X_mat, P);
 }
 
 bool UnknownTracker::predict(const rclcpp::Time & time)
@@ -175,8 +175,8 @@ bool UnknownTracker::measureWithPose(
   constexpr int dim_y = 2;  // pos x, pos y depending on Pose output
 
   /* Set measurement matrix */
-  Eigen::MatrixXd Y(dim_y, 1);
-  Y << object.kinematics.pose_with_covariance.pose.position.x,
+  Eigen::MatrixXd Y_mat(dim_y, 1);
+  Y_mat << object.kinematics.pose_with_covariance.pose.position.x,
     object.kinematics.pose_with_covariance.pose.position.y;
 
   /* Set measurement matrix */
@@ -200,7 +200,7 @@ bool UnknownTracker::measureWithPose(
     R(1, 0) = object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::Y_X];
     R(1, 1) = object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::Y_Y];
   }
-  if (!ekf_.update(Y, C, R)) {
+  if (!ekf_.update(Y_mat, C, R)) {
     RCLCPP_WARN(logger_, "Pedestrian : Cannot update");
   }
 

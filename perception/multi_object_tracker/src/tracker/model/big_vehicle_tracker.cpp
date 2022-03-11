@@ -71,16 +71,16 @@ BigVehicleTracker::BigVehicleTracker(
   max_wz_ = tier4_autoware_utils::deg2rad(30);    // [rad/s]
 
   // initialize X matrix
-  Eigen::MatrixXd X(ekf_params_.dim_x, 1);
-  X(IDX::X) = object.kinematics.pose_with_covariance.pose.position.x;
-  X(IDX::Y) = object.kinematics.pose_with_covariance.pose.position.y;
-  X(IDX::YAW) = tf2::getYaw(object.kinematics.pose_with_covariance.pose.orientation);
+  Eigen::MatrixXd X_mat(ekf_params_.dim_x, 1);
+  X_mat(IDX::X) = object.kinematics.pose_with_covariance.pose.position.x;
+  X_mat(IDX::Y) = object.kinematics.pose_with_covariance.pose.position.y;
+  X_mat(IDX::YAW) = tf2::getYaw(object.kinematics.pose_with_covariance.pose.orientation);
   if (object.kinematics.has_twist) {
-    X(IDX::VX) = object.kinematics.twist_with_covariance.twist.linear.x;
-    X(IDX::WZ) = object.kinematics.twist_with_covariance.twist.angular.z;
+    X_mat(IDX::VX) = object.kinematics.twist_with_covariance.twist.linear.x;
+    X_mat(IDX::WZ) = object.kinematics.twist_with_covariance.twist.angular.z;
   } else {
-    X(IDX::VX) = 0.0;
-    X(IDX::WZ) = 0.0;
+    X_mat(IDX::VX) = 0.0;
+    X_mat(IDX::WZ) = 0.0;
   }
 
   // initialize P matrix
@@ -90,9 +90,9 @@ BigVehicleTracker::BigVehicleTracker(
     object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::X_X] == 0.0 ||
     object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::Y_Y] == 0.0 ||
     object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::YAW_YAW] == 0.0) {
-    const double cos_yaw = std::cos(X(IDX::YAW));
-    const double sin_yaw = std::sin(X(IDX::YAW));
-    const double sin_2yaw = std::sin(2.0f * X(IDX::YAW));
+    const double cos_yaw = std::cos(X_mat(IDX::YAW));
+    const double sin_yaw = std::sin(X_mat(IDX::YAW));
+    const double sin_2yaw = std::sin(2.0f * X_mat(IDX::YAW));
     // Rotate the covariance matrix according to the vehicle yaw
     // because p0_cov_x and y are in the vehicle coordinate system.
     P(IDX::X, IDX::X) =
@@ -128,7 +128,7 @@ BigVehicleTracker::BigVehicleTracker(
   } else {
     bounding_box_ = {2.0, 7.0, 2.0};
   }
-  ekf_.init(X, P);
+  ekf_.init(X_mat, P);
 }
 
 bool BigVehicleTracker::predict(const rclcpp::Time & time)
@@ -246,8 +246,8 @@ bool BigVehicleTracker::measureWithPose(
   }
 
   /* Set measurement matrix */
-  Eigen::MatrixXd Y(dim_y, 1);
-  Y << object.kinematics.pose_with_covariance.pose.position.x,
+  Eigen::MatrixXd Y_mat(dim_y, 1);
+  Y_mat << object.kinematics.pose_with_covariance.pose.position.x,
     object.kinematics.pose_with_covariance.pose.position.y, measurement_yaw;
 
   /* Set measurement matrix */
@@ -282,7 +282,7 @@ bool BigVehicleTracker::measureWithPose(
     R(2, 1) = object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::YAW_Y];
     R(2, 2) = object.kinematics.pose_with_covariance.covariance[utils::MSG_COV_IDX::YAW_YAW];
   }
-  if (!ekf_.update(Y, C, R)) {
+  if (!ekf_.update(Y_mat, C, R)) {
     RCLCPP_WARN(logger_, "Cannot update");
   }
 
