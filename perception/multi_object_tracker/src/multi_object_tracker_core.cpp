@@ -35,6 +35,8 @@
 #include <Eigen/Geometry>
 #include <rclcpp_components/register_node_macro.hpp>
 
+#include <glog/logging.h>
+
 using Label = autoware_auto_perception_msgs::msg::ObjectClassification;
 
 namespace
@@ -159,11 +161,20 @@ bool isSpecificAlivePattern(
 
 }  // namespace
 
+
+
 MultiObjectTracker::MultiObjectTracker(const rclcpp::NodeOptions & node_options)
 : rclcpp::Node("multi_object_tracker", node_options),
   tf_buffer_(this->get_clock()),
   tf_listener_(tf_buffer_)
 {
+  RCLCPP_ERROR(get_logger(), "MultiObjectTracker constructor start");
+
+  google::InitGoogleLogging("multi object tracker test!!!");
+  google::InstallFailureSignalHandler();
+
+  RCLCPP_ERROR(get_logger(), "MultiObjectTracker constructor glog set done");
+
   // Create publishers and subscribers
   detected_object_sub_ = create_subscription<autoware_auto_perception_msgs::msg::DetectedObjects>(
     "input", rclcpp::QoS{1},
@@ -202,11 +213,22 @@ MultiObjectTracker::MultiObjectTracker(const rclcpp::NodeOptions & node_options)
 
   data_association_ = std::make_unique<DataAssociation>(
     can_assign_matrix, max_dist_matrix, max_area_matrix, min_area_matrix, max_rad_matrix);
+  RCLCPP_ERROR(get_logger(), "MultiObjectTracker constructor end");
 }
 
 void MultiObjectTracker::onMeasurement(
   const autoware_auto_perception_msgs::msg::DetectedObjects::ConstSharedPtr input_objects_msg)
 {
+
+  // for (int i = 0; i < 1000; ++i) {
+  //   RCLCPP_ERROR(get_logger(), "i = %d", i);
+  //   if (i > 99) {
+  //     RCLCPP_ERROR(get_logger(), "going die");
+  //     throw;
+  //   }
+  // }
+  // RCLCPP_ERROR(get_logger(), "while done");
+
   const auto self_transform =
     getTransform(tf_buffer_, "base_link", world_frame_id_, input_objects_msg->header.stamp);
   if (!self_transform) {

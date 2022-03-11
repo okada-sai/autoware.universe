@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.5)
 project(multi_object_tracker)
 
+set(CMAKE_BUILD_TYPE "Debug")
+
 ### Compile options
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -52,6 +54,7 @@ ament_auto_add_library(multi_object_tracker_node SHARED
 target_link_libraries(multi_object_tracker_node
   mu_successive_shortest_path
   Eigen3::Eigen
+  glog
 )
 
 rclcpp_components_register_node(multi_object_tracker_node

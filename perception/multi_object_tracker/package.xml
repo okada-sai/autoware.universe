@@ -22,6 +22,7 @@
   <depend>tier4_autoware_utils</depend>
   <depend>tier4_perception_msgs</depend>
   <depend>unique_identifier_msgs</depend>
+  <depend>libgoogle-glog-dev</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
