@@ -138,7 +138,6 @@ inline bool smoothPath(
 
   auto trajectory = convertPathToTrajectoryPoints(in_path);
   if (external_v_limit) {
-    std::cerr << "[behavior_velocity][trajectory_utils]: external_v_limit applied" << std::endl;
     motion_velocity_smoother::trajectory_utils::applyMaximumVelocityLimit(
       0, trajectory.size(), external_v_limit->max_velocity, trajectory);
   }
