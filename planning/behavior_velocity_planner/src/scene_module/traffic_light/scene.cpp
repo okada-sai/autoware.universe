@@ -467,8 +467,8 @@ autoware_auto_planning_msgs::msg::PathWithLaneId TrafficLightModule::insertStopP
   target_point_with_lane_id.point.longitudinal_velocity_mps = 0.0;
 
   // Insert stop pose into path or replace with zero velocity
-  planning_utils::insertVelocity(
-    modified_path, target_point_with_lane_id, 0.0, target_velocity_point_idx);
+  size_t insert_index = insert_target_point_idx;
+  planning_utils::insertVelocity(modified_path, target_point_with_lane_id, 0.0, insert_index);
   if (static_cast<int>(target_velocity_point_idx) < first_stop_path_point_index_) {
     first_stop_path_point_index_ = static_cast<int>(target_velocity_point_idx);
     debug_data_.first_stop_pose = target_point_with_lane_id.point.pose;
