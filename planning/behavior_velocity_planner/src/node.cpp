@@ -15,6 +15,7 @@
 #include "behavior_velocity_planner/node.hpp"
 
 #include <lanelet2_extension/utility/message_conversion.hpp>
+#include <tier4_autoware_utils/ros/wait_for_param.hpp>
 #include <utilization/path_utilization.hpp>
 
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
@@ -122,8 +123,10 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   sub_external_intersection_states_ =
     this->create_subscription<tier4_api_msgs::msg::IntersectionStatus>(
       "~/input/external_intersection_states", 10,
-      std::bind(&BehaviorVelocityPlannerNode::onExternalIntersectionStates, this, _1),
-      createSubscriptionOptions(this));
+      std::bind(&BehaviorVelocityPlannerNode::onExternalIntersectionStates, this, _1));
+  sub_external_velocity_limit_ = this->create_subscription<VelocityLimit>(
+    "~/input/external_velocity_limit_mps", 1,
+    std::bind(&BehaviorVelocityPlannerNode::onExternalVelocityLimit, this, _1));
   sub_external_traffic_signals_ =
     this->create_subscription<autoware_auto_perception_msgs::msg::TrafficSignalArray>(
       "~/input/external_traffic_signals", 10,
@@ -137,6 +140,9 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   sub_occupancy_grid_ = this->create_subscription<nav_msgs::msg::OccupancyGrid>(
     "~/input/occupancy_grid", 1, std::bind(&BehaviorVelocityPlannerNode::onOccupancyGrid, this, _1),
     createSubscriptionOptions(this));
+
+  // set velocity smoother param
+  onParam();
 
   // Publishers
   path_pub_ = this->create_publisher<autoware_auto_planning_msgs::msg::Path>("~/output/path", 1);
@@ -172,9 +178,6 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   if (this->declare_parameter("launch_virtual_traffic_light", true)) {
     planner_manager_.launchSceneModule(std::make_shared<VirtualTrafficLightModuleManager>(*this));
   }
-  if (this->declare_parameter("launch_occlusion_spot", true)) {
-    planner_manager_.launchSceneModule(std::make_shared<OcclusionSpotModuleManager>(*this));
-  }
   // this module requires all the stop line.Therefore this modules should be placed at the bottom.
   if (this->declare_parameter("launch_no_stopping_area", true)) {
     planner_manager_.launchSceneModule(std::make_shared<NoStoppingAreaModuleManager>(*this));
@@ -182,6 +185,10 @@ BehaviorVelocityPlannerNode::BehaviorVelocityPlannerNode(const rclcpp::NodeOptio
   // permanent stop line module should be after no stopping area
   if (this->declare_parameter("launch_stop_line", true)) {
     planner_manager_.launchSceneModule(std::make_shared<StopLineModuleManager>(*this));
+  }
+  // to calculate ttc it's better to be after stop line
+  if (this->declare_parameter("launch_occlusion_spot", true)) {
+    planner_manager_.launchSceneModule(std::make_shared<OcclusionSpotModuleManager>(*this));
   }
 }
 
@@ -211,7 +218,9 @@ bool BehaviorVelocityPlannerNode::isDataReady(const PlannerData planner_data) co
   if (!d.route_handler_->isMapMsgReady()) {
     return false;
   }
-
+  if (!d.velocity_smoother_) {
+    return false;
+  }
   return true;
 }
 
@@ -283,6 +292,66 @@ void BehaviorVelocityPlannerNode::onVehicleVelocity(
   }
 }
 
+void BehaviorVelocityPlannerNode::onParam()
+{
+  using motion_velocity_smoother::AnalyticalJerkConstrainedSmoother;
+  motion_velocity_smoother::SmootherBase::BaseParam base_param;
+  {
+    auto & p = base_param;
+    p.min_decel = declare_parameter("normal.min_acc", -1.0);
+    p.min_jerk = declare_parameter("normal.min_jerk", -0.3);
+    p.max_accel = declare_parameter("normal.max_acc", 2.0);
+    p.max_jerk = declare_parameter("normal.max_jerk", 0.3);
+    p.stop_decel = declare_parameter("stop_decel", 0.0);
+    p.max_lateral_accel = declare_parameter("max_lateral_accel", 0.2);
+    p.decel_distance_before_curve = declare_parameter("decel_distance_before_curve", 3.5);
+    p.decel_distance_after_curve = declare_parameter("decel_distance_after_curve", 0.0);
+    p.min_curve_velocity = declare_parameter("min_curve_velocity", 1.38);
+    p.resample_param.max_trajectory_length = declare_parameter("max_trajectory_length", 200.0);
+    p.resample_param.min_trajectory_length = declare_parameter("min_trajectory_length", 30.0);
+    p.resample_param.resample_time = declare_parameter("resample_time", 10.0);
+    p.resample_param.dense_resample_dt = declare_parameter("dense_resample_dt", 0.1);
+    p.resample_param.dense_min_interval_distance =
+      declare_parameter("dense_min_interval_distance", 0.1);
+    p.resample_param.sparse_resample_dt = declare_parameter("sparse_resample_dt", 0.5);
+    p.resample_param.sparse_min_interval_distance =
+      declare_parameter("sparse_min_interval_distance", 4.0);
+  }
+
+  motion_velocity_smoother::AnalyticalJerkConstrainedSmoother::Param
+    analytical_jerk_constrained_smoother_param;
+  {
+    auto & p = analytical_jerk_constrained_smoother_param;
+    p.resample.ds_resample = declare_parameter("resample.ds_resample", 0.1);
+    p.resample.num_resample = declare_parameter("resample.num_resample", 1);
+    p.resample.delta_yaw_threshold = declare_parameter("resample.delta_yaw_threshold", 0.785);
+
+    p.latacc.enable_constant_velocity_while_turning =
+      declare_parameter("latacc.enable_constant_velocity_while_turning", false);
+    p.latacc.constant_velocity_dist_threshold =
+      declare_parameter("latacc.constant_velocity_dist_threshold", 2.0);
+
+    p.forward.max_acc = declare_parameter("forward.max_acc", 1.0);
+    p.forward.min_acc = declare_parameter("forward.min_acc", -1.0);
+    p.forward.max_jerk = declare_parameter("forward.max_jerk", 0.3);
+    p.forward.min_jerk = declare_parameter("forward.min_jerk", -0.3);
+    p.forward.kp = declare_parameter("forward.kp", 0.3);
+
+    p.backward.start_jerk = declare_parameter("backward.start_jerk", -0.1);
+    p.backward.min_jerk_mild_stop = declare_parameter("backward.min_jerk_mild_stop", -0.3);
+    p.backward.min_jerk = declare_parameter("backward.min_jerk", -1.5);
+    p.backward.min_acc_mild_stop = declare_parameter("backward.min_acc_mild_stop", -1.0);
+    p.backward.min_acc = declare_parameter("backward.min_acc", -2.5);
+    p.backward.span_jerk = declare_parameter("backward.span_jerk", -0.01);
+  }
+
+  planner_data_.velocity_smoother_ =
+    std::make_unique<motion_velocity_smoother::AnalyticalJerkConstrainedSmoother>(
+      analytical_jerk_constrained_smoother_param);
+  planner_data_.velocity_smoother_->setParam(base_param);
+  return;
+}
+
 void BehaviorVelocityPlannerNode::onLaneletMap(
   const autoware_auto_mapping_msgs::msg::HADMapBin::ConstSharedPtr msg)
 {
@@ -317,6 +386,11 @@ void BehaviorVelocityPlannerNode::onExternalIntersectionStates(
 {
   std::lock_guard<std::mutex> lock(mutex_);
   planner_data_.external_intersection_status_input = *msg;
+}
+
+void BehaviorVelocityPlannerNode::onExternalVelocityLimit(const VelocityLimit::ConstSharedPtr msg)
+{
+  planner_data_.external_velocity_limit = *msg;
 }
 
 void BehaviorVelocityPlannerNode::onExternalTrafficSignals(

@@ -63,6 +63,16 @@ struct SearchRangeIndex
   size_t min_idx;
   size_t max_idx;
 };
+struct DetectionRange
+{
+  bool use_right = true;
+  bool use_left = true;
+  double interval;
+  double min_longitudinal_distance;
+  double max_longitudinal_distance;
+  double min_lateral_distance;
+  double max_lateral_distance;
+};
 struct PointWithSearchRangeIndex
 {
   geometry_msgs::msg::Point point;
@@ -70,11 +80,13 @@ struct PointWithSearchRangeIndex
 };
 using autoware_auto_planning_msgs::msg::PathWithLaneId;
 using Point2d = boost::geometry::model::d2::point_xy<double>;
-using Polygons2d = std::vector<lanelet::BasicPolygon2d>;
 using autoware_auto_planning_msgs::msg::PathPointWithLaneId;
 using autoware_auto_planning_msgs::msg::PathWithLaneId;
+using BasicPolygons2d = std::vector<lanelet::BasicPolygon2d>;
+using Polygons2d = std::vector<Polygon2d>;
 namespace planning_utils
 {
+using geometry_msgs::msg::Pose;
 inline geometry_msgs::msg::Point getPoint(const geometry_msgs::msg::Point & p) { return p; }
 inline geometry_msgs::msg::Point getPoint(const geometry_msgs::msg::Pose & p) { return p.position; }
 inline geometry_msgs::msg::Point getPoint(const geometry_msgs::msg::PoseStamped & p)
@@ -110,7 +122,15 @@ inline geometry_msgs::msg::Pose getPose(
 {
   return traj.points.at(idx).pose;
 }
-void getAllPartitionLanelets(const lanelet::LaneletMapConstPtr ll, Polygons2d & polys);
+
+// create detection area from given range
+void createDetectionAreaPolygons(
+  Polygons2d & slices, const PathWithLaneId & path, const DetectionRange da_range,
+  const double obstacle_vel_mps);
+
+Point2d calculateLateralOffsetPoint2d(const Pose & p, const double offset);
+
+void getAllPartitionLanelets(const lanelet::LaneletMapConstPtr ll, BasicPolygons2d & polys);
 void setVelocityFrom(const size_t idx, const double vel, PathWithLaneId * input);
 void insertVelocity(
   PathWithLaneId & path, const PathPointWithLaneId & path_point, const double v,
