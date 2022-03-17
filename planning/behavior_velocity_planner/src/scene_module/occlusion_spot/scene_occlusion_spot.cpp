@@ -32,6 +32,29 @@
 namespace behavior_velocity_planner
 {
 namespace utils = occlusion_spot_utils;
+/*
+PathWithLaneId applyAccelToPath(const PathWithLaneId & path, const double v0,const double l0)
+{
+  const double a_des = 1.0;
+  auto V = [](const double v0, const double a,const double l){
+      return std::sqrt(v0*v0+2*a*l);
+  }
+  PathWithLaneId out;
+  double l = -l0;
+  for (size_t i = 0; i < path.points.size(); i++) {
+    PathPointWithLaneId p = path.points.at(i);
+    const double pv = p.point.longitudinal_vel_mps;
+    l += std::hypot()
+    if(l<0){
+      p.point.longitudinal_velocity_mps = std::max(v0, 1.0);
+    } else{
+      const double v_acc =V(v0,a_des,l); 
+      p.point.longitudinal_velocity_mps = std::min(pv,v_acc);
+    }
+    out.points.emplace_back(p);
+  }
+  return out;
+}*/
 
 OcclusionSpotModule::OcclusionSpotModule(
   const int64_t module_id, [[maybe_unused]] std::shared_ptr<const PlannerData> planner_data,
@@ -77,6 +100,11 @@ bool OcclusionSpotModule::modifyPathVelocity(
   PathWithLaneId interp_path;
   //! never change this interpolation interval(will affect module accuracy)
   splineInterpolate(clipped_path, 1.0, &interp_path, logger_);
+  const geometry_msgs::msg::Point start_point = interp_path.points.at(0).point.pose.position;
+  const auto offset = tier4_autoware_utils::calcSignedArcLength(
+    interp_path.points, ego_pose, start_point, param_.dist_thr, param_.angle_thr);
+  if (offset == boost::none) return true;
+  const double offset_from_start_to_ego = -offset.get();
   if (param_.pass_judge == utils::PASS_JUDGE::CURRENT_VELOCITY) {
     interp_path = utils::applyVelocityToPath(interp_path, param_.v.v_ego);
   } else if (param_.pass_judge == utils::PASS_JUDGE::SMOOTH_VELOCITY) {
@@ -85,11 +113,6 @@ bool OcclusionSpotModule::modifyPathVelocity(
     }
   }
   debug_data_.interp_path = interp_path;
-  const geometry_msgs::msg::Point start_point = interp_path.points.at(0).point.pose.position;
-  const auto offset = tier4_autoware_utils::calcSignedArcLength(
-    interp_path.points, ego_pose, start_point, param_.dist_thr, param_.angle_thr);
-  if (offset == boost::none) return true;
-  const double offset_from_start_to_ego = -offset.get();
   auto & detection_area_polygons = debug_data_.detection_area_polygons;
   utils::buildDetectionAreaPolygon(
     detection_area_polygons, interp_path, offset_from_start_to_ego, param_);

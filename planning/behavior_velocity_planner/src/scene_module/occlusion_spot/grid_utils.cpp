@@ -181,8 +181,8 @@ void toQuantizedImage(
   for (int x = width - 1; x >= 0; x--) {
     for (int y = height - 1; y >= 0; y--) {
       const int idx = (height - 1 - y) + (width - 1 - x) * height;
-      int8_t intensity = occupancy_grid.data.at(idx);
-      if (0 <= intensity && intensity <= param.free_space_max) {
+      unsigned char intensity = occupancy_grid.data.at(idx);
+      if (intensity <= param.free_space_max) {
         intensity = grid_utils::occlusion_cost_value::FREE_SPACE;
       } else if (param.free_space_max < intensity && intensity < param.occupied_min) {
         intensity = grid_utils::occlusion_cost_value::UNKNOWN;
@@ -205,8 +205,8 @@ void denoiseOccupancyGridCV(
   toQuantizedImage(occupancy_grid, &cv_image, param);
   constexpr int num_iter = 2;
   //!< @brief opening & closing to remove noise in occupancy grid
-  cv::dilate(cv_image, cv_image, cv::Mat(), cv::Point(-1, -1), num_iter);
   cv::erode(cv_image, cv_image, cv::Mat(), cv::Point(-1, -1), num_iter);
+  cv::dilate(cv_image, cv_image, cv::Mat(), cv::Point(-1, -1), num_iter);
   imageToOccupancyGrid(cv_image, &occupancy_grid);
   grid_map::GridMapRosConverter::fromOccupancyGrid(occupancy_grid, "layer", grid_map);
 }

@@ -37,9 +37,9 @@ namespace grid_utils
 namespace occlusion_cost_value
 {
 static constexpr int NO_INFORMATION = -1;
-static constexpr int FREE_SPACE = 0;
-static constexpr int UNKNOWN = 50;
-static constexpr int OCCUPIED = 100;
+static constexpr int FREE_SPACE = 155;
+static constexpr int UNKNOWN = 125;
+static constexpr int OCCUPIED = 0;
 }  // namespace occlusion_cost_value
 
 struct GridParam
